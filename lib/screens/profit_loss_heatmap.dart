@@ -93,41 +93,127 @@ class ProfitLossHeatmap extends StatelessWidget {
     dynamic hiveKey,
     double percent,
   ) {
+    final TextEditingController profitController = TextEditingController(
+      text: record.profitOrLoss.toStringAsFixed(2),
+    );
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A1F1A), // premium dark coffee
+        backgroundColor: const Color(0xFF2A1F1A),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
-          "Record Details",
+          "Edit Record",
           style: TextStyle(color: darkTextColor, fontWeight: FontWeight.bold),
         ),
+
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _detailRow("Date", DateFormat('d MMMM, yyyy').format(record.date)),
+
             _detailRow(
               "Investment",
               "${record.investment.toStringAsFixed(2)} Rs.",
             ),
-            _detailRow(
-              "Profit/Loss",
-              "${record.profitOrLoss >= 0 ? '+' : ''}${record.profitOrLoss.toStringAsFixed(2)} Rs.",
-              color: record.profitOrLoss >= 0 ? Colors.green : Colors.red,
+
+            const SizedBox(height: 12),
+
+            const Text(
+              "Profit / Loss (Editable)",
+              style: TextStyle(color: Colors.grey),
             ),
+
+            const SizedBox(height: 6),
+
+            TextField(
+              controller: profitController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+                signed: true,
+              ),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.black26,
+
+                prefixText: "₹ ",
+                prefixStyle: const TextStyle(color: Colors.white),
+
+                // ❌ CLEAR BUTTON
+                suffixIcon: profitController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () {
+                          profitController.clear();
+                        },
+                      ),
+
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
             _detailRow("P/L %", "${percent.toStringAsFixed(2)}%"),
           ],
         ),
+
         actions: [
+          // ---------------- CANCEL ----------------
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text("Close", style: TextStyle(color: Colors.white)),
+            child: const Text("Cancel", style: TextStyle(color: Colors.white)),
           ),
+
+          // ---------------- SAVE ----------------
+          TextButton(
+            onPressed: () async {
+              final newProfit = double.tryParse(profitController.text.trim());
+
+              if (newProfit == null) return;
+
+              final updatedRecord = TradingRecord(
+                date: record.date,
+                investment: record.investment,
+                profitOrLoss: newProfit,
+              );
+
+              await Hive.box('tradingData').put(hiveKey, updatedRecord.toMap());
+
+              onDelete(hiveKey); // parent rebuild trigger
+
+              if (!context.mounted) return;
+              Navigator.of(context).pop();
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Profit/Loss updated")),
+              );
+            },
+            child: const Text(
+              "Save",
+              style: TextStyle(color: Colors.greenAccent),
+            ),
+          ),
+
+          // ---------------- DELETE (optional, kept) ----------------
           TextButton(
             onPressed: () async {
               await Hive.box('tradingData').delete(hiveKey);
               onDelete(hiveKey);
+
+              if (!context.mounted) return;
               Navigator.of(context).pop();
 
               ScaffoldMessenger.of(
