@@ -37,6 +37,21 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
     });
   }
 
+  Widget _clearIcon(TextEditingController controller) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        if (value.text.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return IconButton(
+          icon: const Icon(Icons.clear, color: Colors.white54),
+          onPressed: () => controller.clear(),
+        );
+      },
+    );
+  }
+
   // LOAD TARGET AMOUNT
   void _loadTargetAmount() {
     final dynamic raw = _box.get('targetAmount');
@@ -156,7 +171,10 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
 
   // ----------------------- UI + DECORATORS -----------------------
 
-  InputDecoration _inputDecoration(String label) {
+  InputDecoration _inputDecoration(
+    String label,
+    TextEditingController controller,
+  ) {
     return InputDecoration(
       labelText: label,
       labelStyle: const TextStyle(color: darkTextColor),
@@ -171,6 +189,7 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(color: buttonColor, width: 1.3),
       ),
+      suffixIcon: _clearIcon(controller), // ✅ ADD THIS
     );
   }
 
@@ -276,7 +295,10 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
                         controller: _targetController,
                         keyboardType: TextInputType.number,
                         style: const TextStyle(color: darkTextColor),
-                        decoration: _inputDecoration("Set Target Amount (₹)"),
+                        decoration: _inputDecoration(
+                          "Set Target Amount (₹)",
+                          _targetController,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -315,13 +337,21 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
                 controller: _profitLossController,
                 keyboardType: TextInputType.number,
                 style: const TextStyle(color: darkTextColor),
-                decoration: _inputDecoration("Profit / Loss Amount"),
+                decoration: _inputDecoration(
+                  "Profit / Loss Amount",
+                  _profitLossController,
+                ),
               ),
+
+              const SizedBox(height: 16),
               TextField(
                 controller: _reasonController,
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.text,
                 style: const TextStyle(color: darkTextColor),
-                decoration: _inputDecoration("Reason For trade"),
+                decoration: _inputDecoration(
+                  "Reason For trade",
+                  _reasonController,
+                ),
               ),
 
               const SizedBox(height: 16),
@@ -330,10 +360,12 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
                 controller: _investmentController,
                 keyboardType: TextInputType.number,
                 style: const TextStyle(color: darkTextColor),
-                decoration: _inputDecoration("Investment Amount"),
+                decoration: _inputDecoration(
+                  "Investment Amount",
+                  _investmentController,
+                ),
               ),
-
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
