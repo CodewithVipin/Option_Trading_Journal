@@ -1,8 +1,7 @@
-// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use, unnecessary_underscores
 
 import 'package:flutter/material.dart';
 import 'package:heat_map/model/trading_record.dart';
-import 'package:heat_map/theme/app_colors.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 
@@ -20,6 +19,8 @@ class ProfitLossHeatmap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -32,37 +33,29 @@ class ProfitLossHeatmap extends StatelessWidget {
         final record = records[index];
         final hiveKey = keys[index];
 
-        final profitLossPercent = record.investment == 0
+        final percent = record.investment == 0
             ? 0.0
             : (record.profitOrLoss / record.investment) * 100;
 
         final bool isProfit = record.profitOrLoss >= 0;
 
+        final Color baseColor = isProfit
+            ? Colors.greenAccent
+            : Colors.redAccent;
+
         return GestureDetector(
-          onTap: () =>
-              _showDetailsDialog(context, record, hiveKey, profitLossPercent),
+          onTap: () => _showDetailsDialog(context, record, hiveKey, percent),
 
           child: Container(
             decoration: BoxDecoration(
-              color: isProfit
-                  ? Colors.green.withOpacity(0.15)
-                  : Colors.red.withOpacity(0.15),
+              color: baseColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
-
-              border: Border.all(
-                color: isProfit
-                    ? Colors.greenAccent.shade400
-                    : Colors.redAccent.shade200,
-                width: 0.8,
-              ),
-
+              border: Border.all(color: baseColor.withOpacity(0.6), width: 0.8),
               boxShadow: [
                 BoxShadow(
-                  color: isProfit
-                      ? Colors.greenAccent.withOpacity(0.2)
-                      : Colors.redAccent.withOpacity(0.2),
-                  blurRadius: 50,
-                  spreadRadius: -20,
+                  color: baseColor.withOpacity(0.25),
+                  blurRadius: 20,
+                  spreadRadius: -10,
                 ),
               ],
             ),
@@ -71,12 +64,10 @@ class ProfitLossHeatmap extends StatelessWidget {
               child: Text(
                 "${isProfit ? '+' : ''}${record.profitOrLoss.toStringAsFixed(2)}",
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: theme.textTheme.bodySmall?.copyWith(
                   fontSize: 11,
-                  fontWeight: FontWeight.w200,
-                  color: isProfit
-                      ? Colors.greenAccent.shade200
-                      : Colors.redAccent.shade200,
+                  fontWeight: FontWeight.w500,
+                  color: baseColor,
                 ),
               ),
             ),
@@ -86,13 +77,15 @@ class ProfitLossHeatmap extends StatelessWidget {
     );
   }
 
-  // -------------------------- DIALOG --------------------------
+  // ====================== DETAILS DIALOG ======================
   void _showDetailsDialog(
     BuildContext context,
     TradingRecord record,
     dynamic hiveKey,
     double percent,
   ) {
+    final theme = Theme.of(context);
+
     final TextEditingController profitController = TextEditingController(
       text: record.profitOrLoss.toStringAsFixed(2),
     );
@@ -100,40 +93,48 @@ class ProfitLossHeatmap extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A1F1A),
+        backgroundColor: theme.colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+
+        title: Text(
           "Edit Record",
-          style: TextStyle(color: darkTextColor, fontWeight: FontWeight.bold),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
 
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _detailRow("Date", DateFormat('d MMMM, yyyy').format(record.date)),
+            _detailRow(
+              context,
+              "Date",
+              DateFormat('d MMMM, yyyy').format(record.date),
+            ),
 
             _detailRow(
+              context,
               "Investment",
-              "${record.investment.toStringAsFixed(2)} Rs.",
+              "₹ ${record.investment.toStringAsFixed(2)}",
             ),
 
             const SizedBox(height: 12),
+
             Text(
               record.profitOrLoss >= 0
                   ? "Reason for Profit: ${record.reason}"
                   : "Reason for Loss: ${record.reason}",
-              style: TextStyle(
+              style: theme.textTheme.bodySmall?.copyWith(
                 color: record.profitOrLoss >= 0
-                    ? Colors.green.shade200
-                    : Colors.redAccent.shade100,
-                fontWeight: FontWeight.w200,
+                    ? Colors.green
+                    : Colors.redAccent,
               ),
             ),
-            const Text(
-              "Profit / Loss (Editable)",
-              style: TextStyle(color: Colors.grey),
-            ),
+
+            const SizedBox(height: 10),
+
+            Text("Profit / Loss (Editable)", style: theme.textTheme.bodySmall),
 
             const SizedBox(height: 6),
 
@@ -143,31 +144,24 @@ class ProfitLossHeatmap extends StatelessWidget {
                 decimal: true,
                 signed: true,
               ),
-              style: const TextStyle(
-                color: Colors.white,
+              style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
 
               decoration: InputDecoration(
                 filled: true,
-                fillColor: Colors.black26,
-
+                fillColor: theme.colorScheme.surfaceContainerHighest,
                 prefixText: "₹ ",
-                prefixStyle: const TextStyle(color: Colors.white),
-
-                // ❌ CLEAR BUTTON
-                suffixIcon: profitController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          color: Colors.grey,
-                        ),
-                        onPressed: () {
-                          profitController.clear();
-                        },
-                      ),
-
+                suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: profitController,
+                  builder: (_, value, __) {
+                    if (value.text.isEmpty) return const SizedBox.shrink();
+                    return IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: profitController.clear,
+                    );
+                  },
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -176,22 +170,19 @@ class ProfitLossHeatmap extends StatelessWidget {
 
             const SizedBox(height: 10),
 
-            _detailRow("P/L %", "${percent.toStringAsFixed(2)}%"),
+            _detailRow(context, "P/L %", "${percent.toStringAsFixed(2)} %"),
           ],
         ),
 
         actions: [
-          // ---------------- CANCEL ----------------
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text("Cancel", style: TextStyle(color: Colors.white)),
+            child: const Text("Cancel"),
           ),
 
-          // ---------------- SAVE ----------------
           TextButton(
             onPressed: () async {
               final newProfit = double.tryParse(profitController.text.trim());
-
               if (newProfit == null) return;
 
               final updatedRecord = TradingRecord(
@@ -203,7 +194,7 @@ class ProfitLossHeatmap extends StatelessWidget {
 
               await Hive.box('tradingData').put(hiveKey, updatedRecord.toMap());
 
-              onDelete(hiveKey); // parent rebuild trigger
+              onDelete(hiveKey);
 
               if (!context.mounted) return;
               Navigator.of(context).pop();
@@ -212,13 +203,9 @@ class ProfitLossHeatmap extends StatelessWidget {
                 const SnackBar(content: Text("Profit/Loss updated")),
               );
             },
-            child: const Text(
-              "Save",
-              style: TextStyle(color: Colors.greenAccent),
-            ),
+            child: const Text("Save", style: TextStyle(color: Colors.green)),
           ),
 
-          // ---------------- DELETE (optional, kept) ----------------
           TextButton(
             onPressed: () async {
               await Hive.box('tradingData').delete(hiveKey);
@@ -229,7 +216,7 @@ class ProfitLossHeatmap extends StatelessWidget {
 
               ScaffoldMessenger.of(
                 context,
-              ).showSnackBar(const SnackBar(content: Text("Record deleted.")));
+              ).showSnackBar(const SnackBar(content: Text("Record deleted")));
             },
             child: const Text(
               "Delete",
@@ -241,8 +228,10 @@ class ProfitLossHeatmap extends StatelessWidget {
     );
   }
 
-  // -------------------------- DETAIL ROW WIDGET --------------------------
-  Widget _detailRow(String title, String value, {Color color = darkTextColor}) {
+  // ====================== DETAIL ROW ======================
+  Widget _detailRow(BuildContext context, String title, String value) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
@@ -250,15 +239,15 @@ class ProfitLossHeatmap extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(color: Colors.grey, fontSize: 14),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.hintColor,
+              ),
             ),
           ),
           Text(
             value,
-            style: TextStyle(
-              color: color,
+            style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              fontSize: 14,
             ),
           ),
         ],

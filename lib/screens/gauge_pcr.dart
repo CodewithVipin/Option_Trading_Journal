@@ -1,7 +1,6 @@
-// ignore_for_file: library_private_types_in_public_api, deprecated_member_use
+// ignore_for_file: library_private_types_in_public_api, deprecated_member_use, unnecessary_underscores
 
 import 'package:flutter/material.dart';
-import 'package:heat_map/theme/app_colors.dart';
 import 'package:heat_map/widgets/theme_toggle_icon.dart';
 
 class DeepMarketInsight extends StatefulWidget {
@@ -19,17 +18,31 @@ class _DeepMarketInsightState extends State<DeepMarketInsight> {
   String marketMood = "Neutral / Wait for Confirmation";
   Color moodColor = Colors.grey;
 
-  void calculatePCR() {
-    double? callOi = double.tryParse(callOiController.text);
-    double? putOi = double.tryParse(putOiController.text);
+  // ---------------- CLEAR ICON ----------------
+  Widget _clearIcon(TextEditingController controller) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (_, value, __) {
+        if (value.text.isEmpty) return const SizedBox.shrink();
+        return IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: controller.clear,
+        );
+      },
+    );
+  }
 
-    if (callOi == null || putOi == null || callOi == 0 || putOi == 0) {
+  // ---------------- PCR LOGIC ----------------
+  void calculatePCR() {
+    final callOi = double.tryParse(callOiController.text);
+    final putOi = double.tryParse(putOiController.text);
+
+    if (callOi == null || putOi == null || callOi <= 0 || putOi <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
             "Enter valid numbers. Values should be greater than zero.",
           ),
-          backgroundColor: Colors.red,
         ),
       );
       return;
@@ -42,11 +55,11 @@ class _DeepMarketInsightState extends State<DeepMarketInsight> {
   }
 
   String _determineMarketMood(double callOi, double putOi) {
-    double difference = (putOi - callOi).abs();
-    double threshold = 0.5 * (callOi < putOi ? callOi : putOi);
+    final diff = (putOi - callOi).abs();
+    final threshold = 0.5 * (callOi < putOi ? callOi : putOi);
 
     if (pcr! <= 0.5 || pcr! >= 2.0) {
-      if (difference > threshold) {
+      if (diff > threshold) {
         if (putOi > callOi) {
           moodColor = Colors.green;
           return "Bullish (Buy Call)";
@@ -61,77 +74,28 @@ class _DeepMarketInsightState extends State<DeepMarketInsight> {
     return "Neutral / Wait for Confirmation";
   }
 
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: darkBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
 
-      // ⭐ PREMIUM COFFEE APPBAR
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(90),
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF6D4C41), Color(0xFF4A3128)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(22),
-              bottomRight: Radius.circular(22),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black54,
-                blurRadius: 18,
-                offset: Offset(0, 6),
-              ),
-            ],
-          ),
-
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Back button
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new,
-                      color: Colors.white,
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-
-                  // Title
-                  const Text(
-                    "Deep Market Insight",
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-
-                  // Theme toggle
-                  const ThemeToggleIcon(),
-                ],
-              ),
-            ),
-          ),
-        ),
+      // ✅ SIMPLE, THEME-AWARE APP BAR
+      appBar: AppBar(
+        title: const Text("Deep Market Insight"),
+        actions: const [ThemeToggleIcon()],
       ),
 
-      // ⭐ BODY
+      // ---------------- BODY ----------------
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _modernInputField(
+              context: context,
               controller: callOiController,
               hint: "Enter Call OI Change",
             ),
@@ -139,99 +103,88 @@ class _DeepMarketInsightState extends State<DeepMarketInsight> {
             const SizedBox(height: 15),
 
             _modernInputField(
+              context: context,
               controller: putOiController,
               hint: "Enter Put OI Change",
             ),
 
             const SizedBox(height: 30),
 
-            _gradientButton(),
+            _gradientButton(context),
 
             const SizedBox(height: 35),
 
-            _resultCard(),
+            _resultCard(context),
 
             const SizedBox(height: 20),
 
-            Visibility(
-              visible: moodColor != Colors.grey,
-              child: Center(
+            if (moodColor != Colors.grey)
+              Center(
                 child: Text(
                   "Vipin! Grab Only 10 Points! 😎",
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: darkTextColor,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: theme.textTheme.titleMedium,
                 ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  // ⭐ Modern Coffee Input Field
+  // ---------------- INPUT FIELD ----------------
   Widget _modernInputField({
+    required BuildContext context,
     required TextEditingController controller,
     required String hint,
   }) {
+    final theme = Theme.of(context);
+
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
-      style: const TextStyle(color: Colors.white),
+      style: theme.textTheme.bodyMedium,
 
       decoration: InputDecoration(
         filled: true,
-        fillColor: darkTabColor.withOpacity(0.9),
+        fillColor: theme.colorScheme.surface,
         hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white54),
-
-        suffixIcon: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white70),
-          onPressed: () => controller.clear(),
-        ),
-
+        hintStyle: TextStyle(color: theme.hintColor),
+        suffixIcon: _clearIcon(controller),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 18,
           horizontal: 16,
         ),
-
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white12),
+          borderSide: BorderSide(color: theme.dividerColor),
         ),
-
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.tealAccent),
+          borderSide: BorderSide(color: theme.colorScheme.primary),
         ),
       ),
     );
   }
 
-  // ⭐ Gradient Button
-  Widget _gradientButton() {
+  // ---------------- BUTTON ----------------
+  Widget _gradientButton(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: calculatePCR,
-
       child: Container(
         height: 55,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Colors.tealAccent, Colors.green],
-          ),
+          gradient: LinearGradient(colors: [colors.primary, colors.secondary]),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.greenAccent.withOpacity(0.3),
+              color: colors.primary.withOpacity(0.35),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-
         child: const Center(
           child: Text(
             "Analyze Market",
@@ -246,33 +199,31 @@ class _DeepMarketInsightState extends State<DeepMarketInsight> {
     );
   }
 
-  // ⭐ Market Result Card
-  Widget _resultCard() {
+  // ---------------- RESULT CARD ----------------
+  Widget _resultCard(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-
       decoration: BoxDecoration(
-        color: moodColor.withOpacity(0.18),
+        color: moodColor.withOpacity(0.15),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: moodColor, width: 1.4),
         boxShadow: [
           BoxShadow(
-            color: moodColor.withOpacity(0.35),
+            color: moodColor.withOpacity(0.3),
             blurRadius: 12,
             offset: const Offset(0, 5),
           ),
         ],
       ),
-
       child: Column(
         children: [
           Text(
             "Market Mood",
-            style: TextStyle(
-              fontSize: 20,
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: darkTextColor,
             ),
           ),
 
@@ -281,10 +232,8 @@ class _DeepMarketInsightState extends State<DeepMarketInsight> {
           Text(
             marketMood,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 22,
+            style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: darkTextColor,
             ),
           ),
 
@@ -292,11 +241,7 @@ class _DeepMarketInsightState extends State<DeepMarketInsight> {
             const SizedBox(height: 8),
             Text(
               "PCR: ${pcr!.toStringAsFixed(2)}",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: darkTextColor,
-              ),
+              style: theme.textTheme.titleMedium,
             ),
           ],
         ],

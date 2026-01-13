@@ -3,173 +3,127 @@
 import 'package:flutter/material.dart';
 import 'package:heat_map/screens/gauge_pcr.dart';
 import 'package:heat_map/screens/record_entry_screen.dart';
-import 'package:heat_map/theme/app_colors.dart';
+import 'package:heat_map/services/theme_service.dart';
 
 class LandScreen extends StatelessWidget {
   const LandScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: darkBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
+
       appBar: AppBar(
-        backgroundColor: appBarBackgroundColor,
         title: const Text("Trading World!"),
+
+        // 🌗 GLOBAL THEME TOGGLE (REMEMBERED)
+        actions: [
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: ThemeService.instance.notifier,
+            builder: (context, mode, _) {
+              return IconButton(
+                tooltip: "Change Theme",
+                icon: Icon(
+                  mode == ThemeMode.dark
+                      ? Icons.dark_mode
+                      : mode == ThemeMode.light
+                      ? Icons.light_mode
+                      : Icons.brightness_auto,
+                ),
+                onPressed: () {
+                  ThemeService.instance.cycleTheme();
+                },
+              );
+            },
+          ),
+        ],
       ),
 
       body: Center(
         child: SingleChildScrollView(
-          child: Padding(
+          padding: const EdgeInsets.all(20),
+
+          child: Container(
             padding: const EdgeInsets.all(20),
+            width: double.infinity,
+
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
 
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ------------------------------------------------------
-                // ⭐ ZERO Flicker Premium Hero Header
-                // ------------------------------------------------------
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      // 🔥 PREMIUM DUAL-TONE GLOW EFFECT
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.08),
-                          blurRadius: 12,
-                          spreadRadius: 1,
-                          offset: const Offset(-4, -4), // upper soft glow
-                        ),
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.35),
-                          blurRadius: 18,
-                          spreadRadius: 6,
-                          offset: const Offset(4, 6), // bottom shadow depth
-                        ),
-                      ],
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
-
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.12),
-                        width: 1.2,
+                // ---------------- PCR SCREEN -----------------
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.primary,
+                      foregroundColor: colors.onPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    child: Material(
-                      color: darkTabColor,
-                      child: Align(
-                        alignment: Alignment.center,
-                        child: Column(
-                          children: const [
-                            SizedBox(height: 5),
-                            Text(
-                              "Analyse • Trade • Grow",
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: darkTextColor,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w300,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            Text(
-                              "Smart Option Trading Starts Here",
-                              textAlign: TextAlign
-                                  .center, // ← stops micro overflow jump
-                              style: TextStyle(
-                                color: darkTextColor,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w200,
-                              ),
-                            ),
-                            SizedBox(height: 5),
-                          ],
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DeepMarketInsight(),
                         ),
+                      );
+                    },
+                    child: const Text(
+                      'Gauge PCR',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 25),
+                const SizedBox(height: 20),
 
-                // ------------------------------------------------------
-                // MAIN CARD
-                // ------------------------------------------------------
-                Container(
-                  padding: const EdgeInsets.all(20),
+                // ---------------- RECORD SCREEN -----------------
+                SizedBox(
                   width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: darkTabColor,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.primary,
+                      foregroundColor: colors.onPrimary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ],
-                  ),
-
-                  child: Column(
-                    children: [
-                      // ---------------- PCR SCREEN -----------------
-                      SizedBox(
-                        width: double.infinity,
-                        child: MaterialButton(
-                          height: 48,
-                          color: buttonColor,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const DeepMarketInsight(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            'Gauge PCR',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                              color: darkTextColor,
-                            ),
-                          ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RecordEntryScreen(),
                         ),
+                      );
+                    },
+                    child: const Text(
+                      'Go To Record Screen',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
                       ),
-
-                      const SizedBox(height: 20),
-
-                      // ---------------- RECORD SCREEN -----------------
-                      SizedBox(
-                        width: double.infinity,
-                        child: MaterialButton(
-                          height: 48,
-                          color: buttonColor,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const RecordEntryScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            'Go To Record Screen',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                              color: darkTextColor,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ],

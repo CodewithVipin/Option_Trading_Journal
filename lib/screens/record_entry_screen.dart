@@ -1,9 +1,9 @@
-// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously, deprecated_member_use, unnecessary_underscores
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously, unnecessary_underscores
 
 import 'package:flutter/material.dart';
 import 'package:heat_map/model/trading_record.dart';
 import 'package:heat_map/screens/heat_map_screen.dart';
-import 'package:heat_map/theme/app_colors.dart';
+import 'package:heat_map/services/theme_service.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 
@@ -37,385 +37,275 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
     });
   }
 
+  // ---------- CLEAR ICON ----------
   Widget _clearIcon(TextEditingController controller) {
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
-      builder: (context, value, _) {
-        if (value.text.isEmpty) {
-          return const SizedBox.shrink();
-        }
+      builder: (_, value, __) {
+        if (value.text.isEmpty) return const SizedBox.shrink();
         return IconButton(
-          icon: const Icon(Icons.clear, color: Colors.white54),
-          onPressed: () => controller.clear(),
+          icon: const Icon(Icons.clear),
+          onPressed: controller.clear,
         );
       },
     );
   }
 
-  // LOAD TARGET AMOUNT
+  // ---------- LOAD TARGET ----------
   void _loadTargetAmount() {
-    final dynamic raw = _box.get('targetAmount');
+    final raw = _box.get('targetAmount');
 
     if (raw != null) {
       _hasTarget = true;
-      if (raw is int) {
-        _targetController.text = raw.toString();
-      } else if (raw is double) {
-        _targetController.text = raw.toStringAsFixed(0);
-      } else {
-        _targetController.text = raw.toString();
-      }
+      _targetController.text = raw.toStringAsFixed(0);
     } else {
       _hasTarget = false;
       _targetController.clear();
     }
-
     if (mounted) setState(() {});
   }
 
-  // SAVE TARGET
+  // ---------- SAVE TARGET ----------
   void _saveTargetAmount() {
     final value = double.tryParse(_targetController.text);
-
     if (value == null || value <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter a valid target amount.")),
-      );
+      _snack("Enter valid target");
+      return;
+    }
+    _box.put('targetAmount', value);
+    _hasTarget = true;
+    _snack("Target set to ₹${value.toStringAsFixed(0)}");
+    setState(() {});
+  }
+
+  void _removeTarget() {
+    _box.delete('targetAmount');
+    _hasTarget = false;
+    _targetController.clear();
+    _snack("Target removed");
+    setState(() {});
+  }
+
+  // ---------- SAVE RECORD ----------
+  void _saveRecord() {
+    if (_profitLossController.text.isEmpty ||
+        _investmentController.text.isEmpty) {
+      _snack("Fill required fields");
       return;
     }
 
-    _box.put('targetAmount', value);
-
-    if (_box.containsKey('targetAlertShownFor')) {
-      _box.delete('targetAlertShownFor');
-    }
-
-    _hasTarget = true;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Target updated to ₹${value.toStringAsFixed(0)}")),
-    );
-
-    if (mounted) setState(() {});
-  }
-
-  // REMOVE TARGET
-  void _removeTarget() {
-    if (_box.containsKey('targetAmount')) {
-      _box.delete('targetAmount');
-    }
-    _hasTarget = false;
-    _targetController.clear();
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Target Removed")));
-
-    if (mounted) setState(() {});
-  }
-
-  bool _validateFields() {
-    if (_profitLossController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter a profit/loss amount.")),
-      );
-      return false;
-    }
-
-    if (_investmentController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter an investment amount.")),
-      );
-      return false;
-    }
-
-    return true;
-  }
-
-  void _saveRecord(BuildContext context) {
-    if (!_validateFields()) return;
-
-    final profitLoss = double.tryParse(_profitLossController.text) ?? 0.0;
-    final investment = double.tryParse(_investmentController.text) ?? 0.0;
-    final date = _selectedDate ?? DateTime.now();
-    final reason = _reasonController.text.trim();
     final record = TradingRecord(
-      reason: reason,
-      profitOrLoss: profitLoss,
-      investment: investment,
-      date: date,
+      reason: _reasonController.text.trim(),
+      profitOrLoss: double.parse(_profitLossController.text),
+      investment: double.parse(_investmentController.text),
+      date: _selectedDate ?? DateTime.now(),
     );
 
     _box.add(record.toMap());
-
     _profitLossController.clear();
     _investmentController.clear();
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Record Saved!")));
+    _snack("Record saved");
   }
 
-  Future<void> _pickDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
+  // ---------- DATE PICKER ----------
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-
-    if (picked != null) {
-      setState(() => _selectedDate = picked);
-    }
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
-  // ----------------------- UI + DECORATORS -----------------------
-
+  // ---------- INPUT DECORATION ----------
   InputDecoration _inputDecoration(
     String label,
     TextEditingController controller,
   ) {
+    final theme = Theme.of(context);
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: darkTextColor),
+      labelStyle: TextStyle(color: theme.textTheme.bodyMedium?.color),
       filled: true,
-      fillColor: darkTabColor,
+      fillColor: theme.colorScheme.surface,
+      suffixIcon: _clearIcon(controller),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Colors.white12),
+        borderSide: BorderSide(color: theme.dividerColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: buttonColor, width: 1.3),
+        borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.3),
       ),
-      suffixIcon: _clearIcon(controller), // ✅ ADD THIS
     );
   }
 
+  // ---------- BUTTON ----------
   Widget _actionButton(String text, VoidCallback onTap) {
+    final theme = Theme.of(context);
     return SizedBox(
       height: 48,
       width: 160,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: buttonColor,
-          elevation: 6,
-          shadowColor: Colors.black45,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          backgroundColor: theme.colorScheme.primary,
+          foregroundColor: theme.colorScheme.onPrimary,
         ),
         onPressed: onTap,
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: darkButtonTextColor,
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
     );
   }
 
-  Widget _targetStatusCard() {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeOutCubic,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: darkTabColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 10,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              _hasTarget
-                  ? "Target: ₹${_targetController.text}"
-                  : "No target set",
-              style: const TextStyle(
-                color: darkTextColor,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          if (_hasTarget)
-            TextButton(
-              onPressed: _removeTarget,
-              child: const Text(
-                "Remove",
-                style: TextStyle(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
+  // ---------- SNACK ----------
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // ----------------------- MAIN UI -----------------------
+  // ================= UI =================
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: darkBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: appBarBackgroundColor,
-        elevation: 0,
-        title: const Text("Record Profit/Loss"),
+        title: const Text("Record Profit / Loss"),
+        actions: [
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: ThemeService.instance.notifier,
+            builder: (_, mode, __) {
+              return IconButton(
+                icon: Icon(
+                  mode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
+                ),
+                onPressed: ThemeService.instance.toggleLightDark,
+              );
+            },
+          ),
+        ],
       ),
 
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _targetStatusCard(),
-              const SizedBox(height: 16),
-
-              if (!_hasTarget)
-                Row(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // TARGET CARD
+            Card(
+              color: theme.colorScheme.surface,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
                   children: [
                     Expanded(
-                      child: TextField(
-                        controller: _targetController,
-                        keyboardType: TextInputType.number,
-                        style: const TextStyle(color: darkTextColor),
-                        decoration: _inputDecoration(
-                          "Set Target Amount (₹)",
-                          _targetController,
-                        ),
+                      child: Text(
+                        _hasTarget
+                            ? "Target: ₹${_targetController.text}"
+                            : "No target set",
+                        style: theme.textTheme.titleMedium,
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    IconButton(
-                      icon: const Icon(Icons.save, color: buttonColor),
-                      onPressed: _saveTargetAmount,
-                    ),
+                    if (_hasTarget)
+                      TextButton(
+                        onPressed: _removeTarget,
+                        child: const Text("Remove"),
+                      ),
                   ],
                 ),
+              ),
+            ),
 
-              const SizedBox(height: 22),
-
+            if (!_hasTarget) ...[
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      _selectedDate == null
-                          ? "No date selected"
-                          : "Date: ${DateFormat('d MMMM, yyyy').format(_selectedDate!)}",
-                      style: const TextStyle(color: darkTextColor),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => _pickDate(context),
-                    child: const Text(
-                      "Pick Date",
-                      style: TextStyle(color: buttonColor),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              TextField(
-                controller: _profitLossController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: darkTextColor),
-                decoration: _inputDecoration(
-                  "Profit / Loss Amount",
-                  _profitLossController,
-                ),
-              ),
-
-              const SizedBox(height: 16),
-              TextField(
-                controller: _reasonController,
-                keyboardType: TextInputType.text,
-                style: const TextStyle(color: darkTextColor),
-                decoration: _inputDecoration(
-                  "Reason For trade",
-                  _reasonController,
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              TextField(
-                controller: _investmentController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: darkTextColor),
-                decoration: _inputDecoration(
-                  "Investment Amount",
-                  _investmentController,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _actionButton("Save Record", () => _saveRecord(context)),
-                  _actionButton("View Heatmap", () {
-                    Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        transitionDuration: const Duration(milliseconds: 500),
-                        pageBuilder: (_, animation, secondaryAnimation) =>
-                            const HeatmapScreen(),
-                        transitionsBuilder: (_, animation, __, child) {
-                          final offsetAnimation =
-                              Tween<Offset>(
-                                begin: const Offset(
-                                  0.1,
-                                  0,
-                                ), // subtle slide from right
-                                end: Offset.zero,
-                              ).animate(
-                                CurvedAnimation(
-                                  parent: animation,
-                                  curve: Curves.easeOutCubic,
-                                ),
-                              );
-
-                          final fadeAnimation = Tween<double>(begin: 0, end: 1)
-                              .animate(
-                                CurvedAnimation(
-                                  parent: animation,
-                                  curve: Curves.easeIn,
-                                ),
-                              );
-
-                          return FadeTransition(
-                            opacity: fadeAnimation,
-                            child: SlideTransition(
-                              position: offsetAnimation,
-                              child: child,
-                            ),
-                          );
-                        },
+                    child: TextField(
+                      controller: _targetController,
+                      keyboardType: TextInputType.number,
+                      decoration: _inputDecoration(
+                        "Set Target Amount (₹)",
+                        _targetController,
                       ),
-                    );
-                  }),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.save),
+                    onPressed: _saveTargetAmount,
+                  ),
                 ],
               ),
             ],
-          ),
+
+            const SizedBox(height: 20),
+
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _selectedDate == null
+                        ? "No date selected"
+                        : DateFormat('d MMM yyyy').format(_selectedDate!),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _pickDate,
+                  child: const Text("Pick Date"),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            TextField(
+              controller: _profitLossController,
+              keyboardType: TextInputType.number,
+              decoration: _inputDecoration(
+                "Profit / Loss Amount",
+                _profitLossController,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            TextField(
+              controller: _reasonController,
+              decoration: _inputDecoration(
+                "Reason for Trade",
+                _reasonController,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            TextField(
+              controller: _investmentController,
+              keyboardType: TextInputType.number,
+              decoration: _inputDecoration(
+                "Investment Amount",
+                _investmentController,
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _actionButton("Save Record", _saveRecord),
+                _actionButton("View Heatmap", () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HeatmapScreen()),
+                  );
+                }),
+              ],
+            ),
+          ],
         ),
       ),
     );

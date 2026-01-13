@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:heat_map/screens/splash_screen.dart';
+import 'package:heat_map/services/theme_service.dart';
+import 'package:heat_map/theme/app_colors.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 void main() async {
@@ -14,10 +16,19 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeService.instance.notifier,
+      builder: (context, themeMode, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          themeMode: themeMode,
 
-      home: const SplashScreen(),
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+
+          home: const SplashScreen(),
+        );
+      },
     );
   }
 }

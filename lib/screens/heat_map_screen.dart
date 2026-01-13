@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:heat_map/model/trading_record.dart';
 import 'package:heat_map/screens/profit_loss_heatmap.dart';
 import 'package:heat_map/screens/summary_details.dart';
-import 'package:heat_map/theme/app_colors.dart';
 import 'package:hive/hive.dart';
 
 class HeatmapScreen extends StatefulWidget {
@@ -28,7 +27,10 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Collect only map entries (records)
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    // ---------------- COLLECT RECORDS ----------------
     final entries = _tradingDataBox.toMap().entries.where(
       (e) => e.value is Map,
     );
@@ -38,95 +40,95 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
         .map((e) => TradingRecord.fromMap(Map<String, dynamic>.from(e.value)))
         .toList();
 
-    // Summaries
-    final double totalProfit = records.fold(
+    // ---------------- SUMMARY ----------------
+    final totalProfit = records.fold(
       0.0,
       (sum, r) => sum + _parseToDoubleSafe(r.profitOrLoss),
     );
-    final double totalInvestment = records.fold(
+
+    final totalInvestment = records.fold(
       0.0,
       (sum, r) => sum + _parseToDoubleSafe(r.investment),
     );
-    final double avgProfit = records.isEmpty
-        ? 0.0
-        : totalProfit / records.length;
-    final double avgProfitPercent = totalInvestment == 0
+
+    final avgProfit = records.isEmpty ? 0.0 : totalProfit / records.length;
+
+    final avgProfitPercent = totalInvestment == 0
         ? 0.0
         : (totalProfit / totalInvestment) * 100;
 
-    // Target parsing (0 means no target set)
-    final dynamic rawTarget = _tradingDataBox.get('targetAmount');
-    final double targetAmount = _parseToDoubleSafe(rawTarget, 0.0);
-    final double coverTarget = targetAmount == 0.0
+    // ---------------- TARGET ----------------
+    final rawTarget = _tradingDataBox.get('targetAmount');
+    final targetAmount = _parseToDoubleSafe(rawTarget, 0.0);
+
+    final coverTarget = targetAmount == 0
         ? 0.0
         : (totalProfit / targetAmount) * 100;
 
-    // Achievement detection
+    // ---------------- TARGET ACHIEVED ----------------
     if (targetAmount > 0 && totalProfit >= targetAmount) {
       final shownFor = _tradingDataBox.get('targetAlertShownFor');
       if (shownFor == null ||
-          _parseToDoubleSafe(shownFor, -1.0) != targetAmount) {
+          _parseToDoubleSafe(shownFor, -1) != targetAmount) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (!mounted) return;
+
           await showDialog<void>(
             context: context,
-            builder: (context) => AlertDialog(
-              title: const Text("Target Achieved!"),
+            builder: (_) => AlertDialog(
+              title: const Text("Target Achieved 🎯"),
               content: const Text(
-                "You successfully achieved your target — set a new one!",
+                "You successfully achieved your target. Set a new one!",
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => Navigator.pop(context),
                   child: const Text("OK"),
                 ),
               ],
             ),
           );
 
-          // After dialog: delete the target and mark shown
           try {
             if (_tradingDataBox.containsKey('targetAmount')) {
               await _tradingDataBox.delete('targetAmount');
             }
             await _tradingDataBox.put('targetAlertShownFor', targetAmount);
-          } catch (e) {
-            // ignore errors quietly
-          }
+          } catch (_) {}
 
           if (mounted) setState(() {});
         });
       }
     }
 
+    // ================= UI =================
     return Scaffold(
-      backgroundColor: darkBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: appBarBackgroundColor,
-        title: const Text("Profit/Loss Heatmap"),
-      ),
+      backgroundColor: theme.scaffoldBackgroundColor,
+
+      appBar: AppBar(title: const Text("Profit / Loss Heatmap")),
+
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: records.isNotEmpty
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SummaryDetails(
                     coverTarget: coverTarget,
-                    targetAmount: targetAmount == 0.0 ? 100000.0 : targetAmount,
+                    targetAmount: targetAmount == 0 ? 100000.0 : targetAmount,
                     totalProfit: totalProfit,
                     totalInvestment: totalInvestment,
                     avgProfit: avgProfit,
                     avgProfitPercent: avgProfitPercent,
                   ),
+
                   const SizedBox(height: 15),
+
                   Expanded(
                     child: ProfitLossHeatmap(
                       records: records,
                       keys: keys,
-                      onDelete: (key) {
-                        setState(() {});
-                      },
+                      onDelete: (_) => setState(() {}),
                     ),
                   ),
                 ],
@@ -134,50 +136,45 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
             : Center(
                 child: Text(
                   "No Analytics!",
-                  style: TextStyle(fontSize: 18, color: darkTextColor),
+                  style: theme.textTheme.titleMedium,
                 ),
               ),
       ),
+
+      // ================= DELETE FAB =================
       floatingActionButton: Visibility(
-        visible: _tradingDataBox.toMap().entries.any((e) => e.value is Map),
+        visible: records.isNotEmpty,
 
         child: GestureDetector(
           onTap: () async {
-            final hasRecords = _tradingDataBox.toMap().entries.any(
-              (e) => e.value is Map,
-            );
-            if (!hasRecords) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Nothing to delete!")),
-              );
-              return;
-            }
-
             final deleteConfirmed = await showDialog<bool>(
               context: context,
-              builder: (context) => AlertDialog(
-                backgroundColor: darkTabColor,
+              builder: (_) => AlertDialog(
+                backgroundColor: colors.surface,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),
-                title: const Text(
+
+                title: Text(
                   "Delete All Records",
-                  style: TextStyle(color: darkTextColor),
+                  style: theme.textTheme.titleMedium,
                 ),
-                content: const Text(
+
+                content: Text(
                   "Are you sure you want to delete all records? This action cannot be undone.",
-                  style: TextStyle(color: darkTextColor),
+                  style: theme.textTheme.bodyMedium,
                 ),
+
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(
                       "Cancel",
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: theme.hintColor),
                     ),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
+                    onPressed: () => Navigator.pop(context, true),
                     child: const Text(
                       "Delete",
                       style: TextStyle(color: Colors.redAccent),
@@ -203,10 +200,10 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
                 await _tradingDataBox.delete('targetAlertShownFor');
               }
 
-              setState(() {});
+              if (mounted) setState(() {});
 
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("All records deleted.")),
+                const SnackBar(content: Text("All records deleted")),
               );
             }
           },
@@ -216,8 +213,6 @@ class _HeatmapScreenState extends State<HeatmapScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [Colors.redAccent.shade400, Colors.red.shade700],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
               ),
               shape: BoxShape.circle,
               boxShadow: [

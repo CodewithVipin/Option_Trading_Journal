@@ -1,8 +1,7 @@
-// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use, unnecessary_underscores
 
 import 'package:flutter/material.dart';
 import 'package:heat_map/screens/land_screen.dart';
-import 'package:heat_map/theme/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -21,7 +20,6 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // Animation Controller (Perfect Timing)
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -37,16 +35,14 @@ class _SplashScreenState extends State<SplashScreen>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
-    // Start animation
     _controller.forward();
 
-    // Navigate with smooth fade transition after animation ends
     Future.delayed(const Duration(milliseconds: 1600), () {
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 500),
-          pageBuilder: (_, animation, _) {
+          pageBuilder: (_, animation, __) {
             return FadeTransition(
               opacity: animation,
               child: const LandScreen(),
@@ -63,21 +59,34 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
+  // ☕ COFFEE STANDARD THEME-AWARE GRADIENT
+  LinearGradient _backgroundGradient(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: isDark
+          ? [
+              colors.surfaceVariant, // mocha layer
+              theme.scaffoldBackgroundColor, // espresso base
+            ]
+          : [
+              colors.primary.withOpacity(0.18), // latte tint
+              theme.scaffoldBackgroundColor, // milk white
+            ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       body: Container(
-        // Premium Coffee Gradient Background
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF4E342E), // Rich Coffee
-              Color(0xFF1A120D), // Dark Roast
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        decoration: BoxDecoration(gradient: _backgroundGradient(context)),
 
         child: SafeArea(
           child: Center(
@@ -88,21 +97,21 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    /// 🔥 Smooth Hero Title (Matches LandScreen)
+                    /// ☕ HERO TITLE
                     Hero(
                       tag: "trading_header",
                       child: Material(
                         color: Colors.transparent,
                         child: Text(
                           "Option Trading App",
-                          style: TextStyle(
-                            color: darkTextColor,
-                            fontSize: 28,
+                          style: theme.textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.8,
                             shadows: [
                               Shadow(
-                                color: Colors.black.withOpacity(0.4),
+                                color: theme.brightness == Brightness.dark
+                                    ? Colors.black.withOpacity(0.45)
+                                    : Colors.black.withOpacity(0.2),
                                 blurRadius: 12,
                               ),
                             ],
@@ -115,11 +124,12 @@ class _SplashScreenState extends State<SplashScreen>
 
                     Text(
                       "Powered by Vipin Maurya",
-                      style: TextStyle(
-                        color: Colors.grey.shade200,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                      style: theme.textTheme.bodySmall?.copyWith(
                         letterSpacing: 0.3,
+                        fontWeight: FontWeight.w500,
+                        color: theme.textTheme.bodySmall?.color?.withOpacity(
+                          theme.brightness == Brightness.dark ? 0.75 : 0.65,
+                        ),
                       ),
                     ),
                   ],
