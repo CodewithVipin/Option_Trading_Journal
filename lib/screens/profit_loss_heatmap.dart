@@ -119,7 +119,17 @@ class ProfitLossHeatmap extends StatelessWidget {
             ),
 
             const SizedBox(height: 12),
-
+            Text(
+              record.profitOrLoss >= 0
+                  ? "Reason for Profit: ${record.reason}"
+                  : "Reason for Loss: ${record.reason}",
+              style: TextStyle(
+                color: record.profitOrLoss >= 0
+                    ? Colors.green.shade200
+                    : Colors.redAccent.shade100,
+                fontWeight: FontWeight.w200,
+              ),
+            ),
             const Text(
               "Profit / Loss (Editable)",
               style: TextStyle(color: Colors.grey),
@@ -185,6 +195,7 @@ class ProfitLossHeatmap extends StatelessWidget {
               if (newProfit == null) return;
 
               final updatedRecord = TradingRecord(
+                reason: record.reason,
                 date: record.date,
                 investment: record.investment,
                 profitOrLoss: newProfit,

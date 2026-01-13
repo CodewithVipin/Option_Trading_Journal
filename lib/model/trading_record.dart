@@ -1,15 +1,18 @@
 class TradingRecord {
   final double profitOrLoss;
+  final String reason;
   final double investment;
   final DateTime date;
 
   TradingRecord({
+    required this.reason,
     required this.profitOrLoss,
     required this.investment,
     required this.date,
   });
 
   Map<String, dynamic> toMap() => {
+    'reson': reason,
     'profitOrLoss': profitOrLoss,
     'investment': investment,
     'date': date.toIso8601String(),
@@ -26,6 +29,7 @@ class TradingRecord {
     }
 
     return TradingRecord(
+      reason: map['reson'],
       profitOrLoss: parseToDouble(map['profitOrLoss']),
       investment: parseToDouble(map['investment']),
       date: DateTime.parse(map['date'].toString()),

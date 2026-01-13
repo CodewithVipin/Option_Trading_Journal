@@ -18,6 +18,7 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
   final _profitLossController = TextEditingController();
   final _investmentController = TextEditingController();
   final _targetController = TextEditingController();
+  final _reasonController = TextEditingController();
 
   DateTime? _selectedDate;
   bool _hasTarget = false;
@@ -122,8 +123,9 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
     final profitLoss = double.tryParse(_profitLossController.text) ?? 0.0;
     final investment = double.tryParse(_investmentController.text) ?? 0.0;
     final date = _selectedDate ?? DateTime.now();
-
+    final reason = _reasonController.text.trim();
     final record = TradingRecord(
+      reason: reason,
       profitOrLoss: profitLoss,
       investment: investment,
       date: date,
@@ -314,6 +316,12 @@ class _RecordEntryScreenState extends State<RecordEntryScreen> {
                 keyboardType: TextInputType.number,
                 style: const TextStyle(color: darkTextColor),
                 decoration: _inputDecoration("Profit / Loss Amount"),
+              ),
+              TextField(
+                controller: _reasonController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: darkTextColor),
+                decoration: _inputDecoration("Reason For trade"),
               ),
 
               const SizedBox(height: 16),
